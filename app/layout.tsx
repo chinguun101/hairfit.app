@@ -9,6 +9,14 @@ const instrumentSerif = Instrument_Serif({
   variable: '--font-instrument-serif',
 })
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover', // Support for notched devices
+}
+
 export const metadata: Metadata = {
   title: 'hairfit - AI Hairstyle Generator & Virtual Try-On',
   description: 'Transform your look with AI-powered hairstyle recommendations. Upload your photo and see yourself in 10 personalized hairstyles instantly. Free hairstyle generator with realistic results.',
@@ -22,13 +30,6 @@ export const metadata: Metadata = {
     telephone: false,
   },
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://hairfit.app'),
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: 'cover', // Support for notched devices
-  },
   openGraph: {
     title: 'hairfit - AI Hairstyle Generator',
     description: 'See yourself in 10 different hairstyles with AI. Upload your photo and get instant, personalized hair recommendations.',
