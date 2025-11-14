@@ -1,0 +1,8 @@
+# Hairfit App - robots.txt
+User-agent: *
+Allow: /
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://hairfit.app/sitemap.xml
+
