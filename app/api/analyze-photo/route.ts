@@ -9,24 +9,27 @@ export async function POST(request: NextRequest) {
     const clientIP = getClientIP(request);
     console.log('Request from IP:', clientIP);
 
-    // Check rate limits (both DDoS and usage limit)
-    const rateLimitCheck = await checkRateLimit(clientIP);
-    if (!rateLimitCheck.allowed) {
-      console.log('Rate limit exceeded for IP:', clientIP);
-      return NextResponse.json(
-        { 
-          error: rateLimitCheck.reason || 'Rate limit exceeded',
-          retryAfter: rateLimitCheck.retryAfter,
-          remaining: rateLimitCheck.remaining
-        },
-        { 
-          status: 429,
-          headers: rateLimitCheck.retryAfter 
-            ? { 'Retry-After': rateLimitCheck.retryAfter.toString() }
-            : {}
-        }
-      );
-    }
+    // TEMPORARILY DISABLED - Check rate limits (both DDoS and usage limit)
+    // const rateLimitCheck = await checkRateLimit(clientIP);
+    // if (!rateLimitCheck.allowed) {
+    //   console.log('Rate limit exceeded for IP:', clientIP);
+    //   return NextResponse.json(
+    //     { 
+    //       error: rateLimitCheck.reason || 'Rate limit exceeded',
+    //       retryAfter: rateLimitCheck.retryAfter,
+    //       remaining: rateLimitCheck.remaining
+    //     },
+    //     { 
+    //       status: 429,
+    //       headers: rateLimitCheck.retryAfter 
+    //         ? { 'Retry-After': rateLimitCheck.retryAfter.toString() }
+    //         : {}
+    //     }
+    //   );
+    // }
+    
+    // Fake rate limit check for now
+    const rateLimitCheck = { allowed: true, remaining: 999 };
 
     const formData = await request.formData();
     const imageFile = formData.get('image') as string; // base64 data
@@ -74,9 +77,9 @@ export async function POST(request: NextRequest) {
         console.log('Analysis session saved with ID:', sessionId);
       }
 
-      // Increment usage count for this IP
-      await incrementUsageCount(clientIP);
-      console.log('Usage count incremented for IP:', clientIP);
+      // TEMPORARILY DISABLED - Increment usage count for this IP
+      // await incrementUsageCount(clientIP);
+      // console.log('Usage count incremented for IP:', clientIP);
     } else {
       console.log('Supabase not configured - skipping database save');
     }
