@@ -558,7 +558,7 @@ export default function Home() {
               textAlign: 'center',
               maxWidth: '400px',
             }}>
-              Face the camera, we'll show you 10 new looks
+              Give us a bright, close-up pic — the algorithm’s eyesight is mid.
             </p>
             
             {remainingUses !== null && (
