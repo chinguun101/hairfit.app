@@ -32,21 +32,27 @@ export default function Home() {
 
   // Fun loading messages
   const loadingMessages = [
-    "analyzing your features",
-    "trying different looks",
-    "finding your angles",
-    "mixing styles",
-    "almost there",
-    "creating your looks",
-    "one moment",
-    "working on it",
-    "generating styles",
-    "just a sec",
-    "few more seconds",
-    "putting it together",
-    "finalizing details",
-    "wrapping up",
-    "nearly done"
+    "Calculating your hair score… 67… because apparently everything is 67 now.",
+    "Enhancing your face… in Ohio…",
+    "Generating hair so good it breaks the simulation… probably.",
+    "AI is cooking… Gordon Ramsay is concerned…",
+    "Uploading your glow-up to the mainframe… brb.",
+    "Running the 'Can this haircut save your life?' meme format…",
+    "Loading… please don't cancel us if it gives you a mullet…",
+    "Teaching the AI the difference between 'cute' and 'CUTE cute'…",
+    "Applying riz to your follicles…",
+    "Trying hairstyles that go SKIBIDI instead of mid…",
+    "AI is literally speedrunning your glow-up… world record attempt…",
+    "This haircut might give you +12 charisma IRL, stay tuned…",
+    "Checking if this look is sigma, goofy, or just a jump scare…",
+    "Applying 4K Ultra HD giga-based hair physics…",
+    "AI said 'trust' and now it's free-styling your bangs…",
+    "Stitching your face with the 'perfect haircut' meme template…",
+    "Optimizing for maximum slay per second…",
+    "Verifying if this haircut goes hard or just goes home…",
+    "Asking the algorithm to stop suggesting Ohio-coded fades…",
+    "Stabilizing your drip levels before generating…",
+    "AI is currently locked in a boss battle with your hairline…"
   ];
 
   // Rotate loading messages
@@ -360,7 +366,7 @@ export default function Home() {
           fontSize: '36px',
           fontWeight: '400',
           fontFamily: 'var(--font-instrument-serif), serif',
-          letterSpacing: '0px',
+          letterSpacing: '1px',
         }}>
           hairfit
         </div>
