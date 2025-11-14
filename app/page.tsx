@@ -28,6 +28,7 @@ export default function Home() {
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
   const [remainingUses, setRemainingUses] = useState<number | null>(null);
   const [loadingMessage, setLoadingMessage] = useState<string>('');
+  const [isMobile, setIsMobile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fun loading messages
@@ -54,6 +55,11 @@ export default function Home() {
     "Stabilizing your drip levels before generating…",
     "AI is currently locked in a boss battle with your hairline…"
   ];
+
+  // Detect mobile device
+  useEffect(() => {
+    setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+  }, []);
 
   // Rotate loading messages
   useEffect(() => {
@@ -322,19 +328,38 @@ export default function Home() {
     });
   };
 
-  const downloadImage = (e: React.MouseEvent, dataUrl: string, filename: string) => {
+  const downloadImage = async (e: React.MouseEvent, dataUrl: string, filename: string) => {
     e.stopPropagation(); // Prevent triggering the lightbox
     
-    // Create a temporary link element
+    // Check if Web Share API is available (iOS Safari supports it)
+    if (navigator.share && navigator.canShare) {
+      try {
+        // Convert data URL to Blob
+        const response = await fetch(dataUrl);
+        const blob = await response.blob();
+        const file = new File([blob], filename, { type: 'image/png' });
+        
+        // Check if we can share this file
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Hairstyle from hairfit',
+            text: 'Check out this hairstyle!'
+          });
+          return; // Successfully shared
+        }
+      } catch (error) {
+        // User cancelled or share failed, fall back to download
+        console.log('Share cancelled or failed:', error);
+      }
+    }
+    
+    // Fallback: Standard download for desktop/unsupported browsers
     const link = document.createElement('a');
     link.href = dataUrl;
     link.download = filename;
-    
-    // Trigger download
     document.body.appendChild(link);
     link.click();
-    
-    // Clean up
     document.body.removeChild(link);
   };
 
@@ -765,9 +790,23 @@ export default function Home() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   >
-                    <path d="M21 15v4a 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
+                    {isMobile ? (
+                      // Share icon for mobile
+                      <>
+                        <circle cx="18" cy="5" r="3"/>
+                        <circle cx="6" cy="12" r="3"/>
+                        <circle cx="18" cy="19" r="3"/>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                      </>
+                    ) : (
+                      // Download icon for desktop
+                      <>
+                        <path d="M21 15v4a 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </>
+                    )}
                   </svg>
                 </button>
               </div>
