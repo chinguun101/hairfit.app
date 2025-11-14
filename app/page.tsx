@@ -11,6 +11,14 @@ interface GeneratedResult {
   success: boolean;
 }
 
+interface SessionHistoryItem {
+  sessionId: string;
+  originalImage: string;
+  results: GeneratedResult[];
+  userProfile: UserHairProfile;
+  timestamp: number;
+}
+
 export default function Home() {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [results, setResults] = useState<GeneratedResult[]>([]);
@@ -29,6 +37,8 @@ export default function Home() {
   const [remainingUses, setRemainingUses] = useState<number | null>(null);
   const [loadingMessage, setLoadingMessage] = useState<string>('');
   const [isMobile, setIsMobile] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [sessionHistory, setSessionHistory] = useState<SessionHistoryItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fun loading messages
@@ -60,6 +70,64 @@ export default function Home() {
   useEffect(() => {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
   }, []);
+
+  // Load session history from localStorage
+  useEffect(() => {
+    const loadHistory = () => {
+      try {
+        const stored = localStorage.getItem('hairfit_sessions');
+        if (stored) {
+          const history: SessionHistoryItem[] = JSON.parse(stored);
+          // Sort by timestamp, newest first
+          history.sort((a, b) => b.timestamp - a.timestamp);
+          setSessionHistory(history);
+        }
+      } catch (error) {
+        console.error('Error loading session history:', error);
+      }
+    };
+    loadHistory();
+  }, []);
+
+  // Save current session to history when generation completes
+  useEffect(() => {
+    if (!isGenerating && originalImage && sessionId && results.length > 0 && userProfile) {
+      const saveSessionToHistory = () => {
+        try {
+          const currentSession: SessionHistoryItem = {
+            sessionId,
+            originalImage,
+            results,
+            userProfile,
+            timestamp: Date.now(),
+          };
+
+          const stored = localStorage.getItem('hairfit_sessions');
+          let history: SessionHistoryItem[] = stored ? JSON.parse(stored) : [];
+          
+          // Check if this session already exists (by sessionId)
+          const existingIndex = history.findIndex(s => s.sessionId === sessionId);
+          if (existingIndex >= 0) {
+            // Update existing session
+            history[existingIndex] = currentSession;
+          } else {
+            // Add new session
+            history.unshift(currentSession);
+          }
+          
+          // Keep only last 20 sessions
+          history = history.slice(0, 20);
+          
+          localStorage.setItem('hairfit_sessions', JSON.stringify(history));
+          setSessionHistory(history);
+        } catch (error) {
+          console.error('Error saving session to history:', error);
+        }
+      };
+      
+      saveSessionToHistory();
+    }
+  }, [isGenerating, originalImage, sessionId, results, userProfile]);
 
   // Rotate loading messages
   useEffect(() => {
@@ -363,6 +431,74 @@ export default function Home() {
     document.body.removeChild(link);
   };
 
+  const downloadAllImages = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Get all generated images (exclude original)
+    const generatedImages = allImages.filter(img => !img.isOriginal);
+    
+    if (generatedImages.length === 0) {
+      alert('No generated images to download yet!');
+      return;
+    }
+
+    // On mobile with share API, try to share all images
+    if (isMobile && navigator.share && navigator.canShare) {
+      try {
+        const files = await Promise.all(
+          generatedImages.map(async (img, index) => {
+            const response = await fetch(img.image);
+            const blob = await response.blob();
+            return new File([blob], `hairstyle-${img.id}.png`, { type: 'image/png' });
+          })
+        );
+        
+        if (navigator.canShare({ files })) {
+          await navigator.share({
+            files,
+            title: 'Hairstyles from hairfit',
+            text: `Check out these ${files.length} hairstyles!`
+          });
+          return;
+        }
+      } catch (error) {
+        console.log('Share all cancelled or failed:', error);
+      }
+    }
+    
+    // Fallback: Download each image with a small delay
+    for (let i = 0; i < generatedImages.length; i++) {
+      const img = generatedImages[i];
+      const link = document.createElement('a');
+      link.href = img.image;
+      link.download = `hairstyle-${img.id}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Small delay between downloads to avoid browser blocking
+      if (i < generatedImages.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+    }
+  };
+
+  const loadSessionFromHistory = (session: SessionHistoryItem) => {
+    setOriginalImage(session.originalImage);
+    setResults(session.results);
+    setUserProfile(session.userProfile);
+    setSessionId(session.sessionId);
+    setCurrentImageIndex(0);
+    setShowHistory(false);
+    
+    // Reconstruct selected hairstyles from results
+    const hairstyles = session.results
+      .filter(r => r.success)
+      .map(r => HAIRSTYLES.find(h => h.id === r.id))
+      .filter(Boolean) as typeof HAIRSTYLES;
+    setSelectedHairstyles(hairstyles);
+  };
+
   return (
     <div style={{
       height: '100vh',
@@ -395,31 +531,53 @@ export default function Home() {
         }}>
           hairfit
         </div>
-        {allImages.length > 0 && (
-          <button
-            onClick={() => {
-              setOriginalImage(null);
-              setResults([]);
-              setUserProfile(null);
-              setSessionId(null);
-              setSelectedHairstyles([]);
-              setCurrentImageIndex(0);
-              setRateLimitError(null);
-              setRemainingUses(null);
-            }}
-            style={{
-              padding: '8px 16px',
-              fontSize: '14px',
-              fontWeight: '600',
-              backgroundColor: 'transparent',
-              color: '#A47864',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            Upload New
-          </button>
-        )}
+        <div style={{
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'center',
+        }}>
+          {sessionHistory.length > 0 && (
+            <button
+              onClick={() => setShowHistory(true)}
+              style={{
+                padding: '8px 16px',
+                fontSize: '14px',
+                fontWeight: '600',
+                backgroundColor: 'transparent',
+                color: '#A47864',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              History
+            </button>
+          )}
+          {allImages.length > 0 && (
+            <button
+              onClick={() => {
+                setOriginalImage(null);
+                setResults([]);
+                setUserProfile(null);
+                setSessionId(null);
+                setSelectedHairstyles([]);
+                setCurrentImageIndex(0);
+                setRateLimitError(null);
+                setRemainingUses(null);
+              }}
+              style={{
+                padding: '8px 16px',
+                fontSize: '14px',
+                fontWeight: '600',
+                backgroundColor: 'transparent',
+                color: '#A47864',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Upload New
+            </button>
+          )}
+        </div>
       </header>
 
       <main style={{ 
@@ -731,7 +889,7 @@ export default function Home() {
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
             >
-              {/* TikTok-style Right Sidebar - Download Button */}
+              {/* TikTok-style Right Sidebar - Download Buttons */}
               <div style={{
                 position: 'absolute',
                 right: '12px',
@@ -739,10 +897,80 @@ export default function Home() {
                 zIndex: 10,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '16px',
+                gap: '12px',
                 alignItems: 'center',
               }}>
-                {/* Download Button */}
+                {/* Download All Button */}
+                {allImages.filter(img => !img.isOriginal).length > 0 && (
+                  <button
+                    onClick={downloadAllImages}
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      backgroundColor: 'rgba(164, 120, 100, 0.95)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      WebkitTapHighlightColor: 'transparent',
+                      position: 'relative',
+                    }}
+                    onTouchStart={(e) => {
+                      e.currentTarget.style.transform = 'scale(0.9)';
+                    }}
+                    onTouchEnd={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.1)';
+                      e.currentTarget.style.backgroundColor = 'rgba(164, 120, 100, 1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.backgroundColor = 'rgba(164, 120, 100, 0.95)';
+                    }}
+                  >
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#ffffff"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M21 15v4a 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    {/* Badge showing count */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '-4px',
+                      right: '-4px',
+                      backgroundColor: '#ffffff',
+                      color: '#000000',
+                      fontSize: '10px',
+                      fontWeight: '700',
+                      width: '18px',
+                      height: '18px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '2px solid #000000',
+                    }}>
+                      {allImages.filter(img => !img.isOriginal).length}
+                    </div>
+                  </button>
+                )}
+
+                {/* Download Single Button */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -1054,6 +1282,182 @@ export default function Home() {
                 borderRadius: '8px',
               }}
             />
+          </div>
+        )}
+
+        {/* History Modal */}
+        {showHistory && (
+          <div
+            onClick={() => setShowHistory(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.95)',
+              zIndex: 1000,
+              backdropFilter: 'blur(10px)',
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
+            <div style={{
+              maxWidth: '800px',
+              margin: '0 auto',
+              padding: '80px 20px 40px',
+              minHeight: '100%',
+            }}
+            onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                padding: '20px',
+                backgroundColor: '#000000',
+                borderBottom: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                zIndex: 1001,
+              }}>
+                <h2 style={{
+                  fontSize: '24px',
+                  fontWeight: '400',
+                  margin: 0,
+                  color: '#ffffff',
+                }}>
+                  History
+                </h2>
+                <button
+                  onClick={() => setShowHistory(false)}
+                  style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '36px',
+                    height: '36px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: '#ffffff',
+                    fontSize: '20px',
+                    fontWeight: '300',
+                    transition: 'background 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* History Grid */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                gap: '16px',
+                marginTop: '20px',
+              }}>
+                {sessionHistory.map((session) => {
+                  const date = new Date(session.timestamp);
+                  const dateStr = date.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined 
+                  });
+                  const timeStr = date.toLocaleTimeString('en-US', { 
+                    hour: 'numeric', 
+                    minute: '2-digit' 
+                  });
+                  
+                  return (
+                    <div
+                      key={session.sessionId}
+                      onClick={() => loadSessionFromHistory(session)}
+                      style={{
+                        cursor: 'pointer',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        backgroundColor: 'rgba(255,255,255,0.05)',
+                        transition: 'all 0.2s ease',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                        e.currentTarget.style.transform = 'scale(1.02)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }}
+                    >
+                      {/* Thumbnail */}
+                      <div style={{
+                        aspectRatio: '3/4',
+                        overflow: 'hidden',
+                        position: 'relative',
+                      }}>
+                        <img
+                          src={session.originalImage}
+                          alt="Session thumbnail"
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                          }}
+                        />
+                        {/* Results count badge */}
+                        <div style={{
+                          position: 'absolute',
+                          top: '8px',
+                          right: '8px',
+                          backgroundColor: 'rgba(0,0,0,0.7)',
+                          color: '#ffffff',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          padding: '4px 8px',
+                          borderRadius: '12px',
+                          backdropFilter: 'blur(10px)',
+                        }}>
+                          {session.results.filter(r => r.success).length} styles
+                        </div>
+                      </div>
+                      {/* Date/Time */}
+                      <div style={{
+                        padding: '12px',
+                        fontSize: '12px',
+                        color: '#a8a8a8',
+                      }}>
+                        <div style={{ fontWeight: '500', color: '#ffffff', marginBottom: '2px' }}>
+                          {dateStr}
+                        </div>
+                        <div>{timeStr}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {sessionHistory.length === 0 && (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '60px 20px',
+                  color: '#a8a8a8',
+                }}>
+                  <p style={{ fontSize: '16px', marginBottom: '8px' }}>No history yet</p>
+                  <p style={{ fontSize: '14px' }}>Your previous sessions will appear here</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
