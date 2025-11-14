@@ -32,26 +32,21 @@ export default function Home() {
 
   // Fun loading messages
   const loadingMessages = [
-    "Teaching AI what a good hair day looks like...",
-    "Consulting with virtual hairstylists...",
-    "Mixing pixels with some hair magic...",
-    "Asking the AI if it's ever had a bad hair day...",
-    "Generating looks that'll make heads turn...",
-    "Calculating the perfect hair-to-face ratio...",
-    "Summoning the spirits of legendary stylists...",
-    "Teaching computers about the law of bangs...",
-    "Converting caffeine into hairstyles...",
-    "Braiding some 1s and 0s together...",
-    "Asking the AI if curtain bangs are still cool...",
-    "Instructing pixels to behave like hair...",
-    "Applying digital hair spray...",
-    "Generating styles faster than you can say 'bob'...",
-    "Making sure the AI didn't skip beauty school...",
-    "Consulting the ancient texts of hair fashion...",
-    "Channeling main character energy...",
-    "Convincing the AI that mullets can be cool...",
-    "Doing the hair math... carry the highlights...",
-    "Manifesting your dream hair into existence..."
+    "analyzing your features",
+    "trying different looks",
+    "finding your angles",
+    "mixing styles",
+    "almost there",
+    "creating your looks",
+    "one moment",
+    "working on it",
+    "generating styles",
+    "just a sec",
+    "few more seconds",
+    "putting it together",
+    "finalizing details",
+    "wrapping up",
+    "nearly done"
   ];
 
   // Rotate loading messages
@@ -362,7 +357,7 @@ export default function Home() {
         flexShrink: 0,
       }}>
         <div style={{
-          fontSize: '24px',
+          fontSize: '36px',
           fontWeight: '400',
           fontFamily: 'var(--font-instrument-serif), serif',
           letterSpacing: '0px',
@@ -557,7 +552,7 @@ export default function Home() {
               textAlign: 'center',
               maxWidth: '400px',
             }}>
-              AI will analyze your features and generate 10 personalized hairstyles
+              Face the camera, we'll show you 10 new looks
             </p>
             
             {remainingUses !== null && (
@@ -619,16 +614,16 @@ export default function Home() {
               marginBottom: '12px',
               fontWeight: '400',
             }}>
-              {isAnalyzing ? 'Analyzing your photo...' : 'Generating hairstyles...'}
+              {isAnalyzing ? 'analyzing photo' : 'generating styles'}
             </p>
             
             {/* Fun loading message */}
             <p style={{
-              fontSize: '14px',
-              color: '#A47864',
+              fontSize: '13px',
+              color: '#a8a8a8',
               marginBottom: '8px',
               fontWeight: '400',
-              fontStyle: 'italic',
+              fontStyle: 'normal',
               minHeight: '20px',
               textAlign: 'center',
               maxWidth: '340px',
