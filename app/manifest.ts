@@ -2,8 +2,8 @@ import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Hairfit App - AI Hairstyle Generator',
-    short_name: 'Hairfit',
+    name: 'hairfit - AI Hairstyle Generator',
+    short_name: 'hairfit',
     description: 'Transform your look with AI-powered hairstyle recommendations',
     start_url: '/',
     display: 'standalone',

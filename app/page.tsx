@@ -363,11 +363,11 @@ export default function Home() {
       }}>
         <div style={{
           fontSize: '24px',
-          fontWeight: '600',
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          letterSpacing: '-0.5px',
+          fontWeight: '400',
+          fontFamily: 'sans-serif',
+          letterSpacing: '0px',
         }}>
-          Hairfit App
+          hairfit
         </div>
         {allImages.length > 0 && (
           <button
@@ -731,37 +731,49 @@ export default function Home() {
                 }}
               />
 
-              {/* Current Image with Slide Animation */}
+              {/* Instagram-style Sliding Container - All Images in a Row */}
               <div 
-                onClick={() => setLightboxImage(allImages[currentImageIndex]?.image || null)}
                 style={{
-                  width: '100%',
-                  height: '100%',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '0 16px',
-                  cursor: 'pointer',
-                  transform: `translateX(${-slideOffset}px)`,
+                  height: '100%',
+                  width: '100%',
+                  transform: `translateX(calc(-${currentImageIndex * 100}% + ${-slideOffset}px))`,
                   transition: slideOffset === 0 ? 'transform 0.35s cubic-bezier(0.4, 0.0, 0.2, 1)' : 'none',
                   willChange: 'transform',
                 }}
               >
-                <img
-                  src={allImages[currentImageIndex]?.image}
-                  alt={allImages[currentImageIndex]?.isOriginal ? 'Original' : `Hairstyle ${allImages[currentImageIndex]?.id}`}
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                    width: 'auto',
-                    height: 'auto',
-                    borderRadius: '8px',
-                    objectFit: 'contain',
-                    userSelect: 'none',
-                    WebkitUserSelect: 'none',
-                    pointerEvents: 'none',
-                  }}
-                />
+                {allImages.map((imageData, index) => (
+                  <div
+                    key={index}
+                    onClick={() => setLightboxImage(imageData.image)}
+                    style={{
+                      minWidth: '100%',
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '0 16px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <img
+                      src={imageData.image}
+                      alt={imageData.isOriginal ? 'Original' : `Hairstyle ${imageData.id}`}
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '100%',
+                        width: 'auto',
+                        height: 'auto',
+                        borderRadius: '8px',
+                        objectFit: 'contain',
+                        userSelect: 'none',
+                        WebkitUserSelect: 'none',
+                        pointerEvents: 'none',
+                      }}
+                    />
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -848,12 +860,15 @@ export default function Home() {
 
             {/* Bottom Action Bar - Instagram Style */}
             <div style={{
-              padding: '12px 20px',
+              padding: '16px 20px',
+              paddingBottom: 'max(16px, env(safe-area-inset-bottom))', // iOS safe area
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
               borderTop: '1px solid rgba(255,255,255,0.1)',
               flexShrink: 0,
+              backgroundColor: '#000000',
+              minHeight: '60px',
             }}>
               <div style={{
                 display: 'flex',
@@ -872,11 +887,20 @@ export default function Home() {
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
-                    padding: '8px',
+                    padding: '12px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     transition: 'transform 0.2s ease',
+                    WebkitTapHighlightColor: 'transparent',
+                    minWidth: '44px', // iOS minimum touch target
+                    minHeight: '44px',
+                  }}
+                  onTouchStart={(e) => {
+                    e.currentTarget.style.transform = 'scale(0.95)';
+                  }}
+                  onTouchEnd={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'scale(1.1)';
@@ -886,8 +910,8 @@ export default function Home() {
                   }}
                 >
                   <svg
-                    width="24"
-                    height="24"
+                    width="28"
+                    height="28"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="#ffffff"

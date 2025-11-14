@@ -3,23 +3,30 @@ import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 
 export const metadata: Metadata = {
-  title: 'Hairfit App - AI Hairstyle Generator & Virtual Try-On',
+  title: 'hairfit - AI Hairstyle Generator & Virtual Try-On',
   description: 'Transform your look with AI-powered hairstyle recommendations. Upload your photo and see yourself in 10 personalized hairstyles instantly. Free hairstyle generator with realistic results.',
   keywords: ['hairstyle generator', 'AI hairstyle', 'virtual hairstyle try-on', 'hairstyle app', 'hair makeover', 'AI hair transformation', 'hairstyle recommendations'],
-  authors: [{ name: 'Hairfit App' }],
-  creator: 'Hairfit App',
-  publisher: 'Hairfit App',
+  authors: [{ name: 'hairfit' }],
+  creator: 'hairfit',
+  publisher: 'hairfit',
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://hairfit.app'),
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+    viewportFit: 'cover', // Support for notched devices
+  },
   openGraph: {
-    title: 'Hairfit App - AI Hairstyle Generator',
+    title: 'hairfit - AI Hairstyle Generator',
     description: 'See yourself in 10 different hairstyles with AI. Upload your photo and get instant, personalized hair recommendations.',
     url: '/',
-    siteName: 'Hairfit App',
+    siteName: 'hairfit',
     locale: 'en_US',
     type: 'website',
     images: [
@@ -27,13 +34,13 @@ export const metadata: Metadata = {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'Hairfit App - AI Hairstyle Generator',
+        alt: 'hairfit - AI Hairstyle Generator',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Hairfit App - AI Hairstyle Generator',
+    title: 'hairfit - AI Hairstyle Generator',
     description: 'See yourself in 10 different hairstyles with AI. Upload your photo and get instant results.',
     images: ['/og-image.png'],
     creator: '@hairfitapp',
