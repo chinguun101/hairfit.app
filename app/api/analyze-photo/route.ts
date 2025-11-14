@@ -50,10 +50,12 @@ export async function POST(request: NextRequest) {
     // Convert base64 to Gemini part
     const originalImagePart = base64ToPart(imageFile, mimeType);
 
-    // Analyze the photo
+    // Analyze the photo - this will return default values if parsing fails
     console.log('Analyzing user photo...');
     const userProfile = await analyzeUserPhoto(originalImagePart, apiKey);
     console.log('Analysis complete:', userProfile);
+    
+    // Note: analyzeUserPhoto always returns a valid profile (defaults to oval/wavy/medium if AI fails)
 
     // Save to Supabase if configured
     let sessionId: string | undefined;

@@ -223,14 +223,25 @@ Return ONLY valid JSON, no other text.`;
   
   const response = result.response;
   
-  // Parse the JSON response
+  // Parse the JSON response with robust error handling
   try {
-    const text = response.text();
+    let text: string;
+    
+    // Try to get text from response - this can fail with "string did not match expected pattern"
+    try {
+      text = response.text();
+    } catch (textError) {
+      console.error('Failed to extract text from Gemini response:', textError);
+      console.log('Response object:', JSON.stringify(response, null, 2));
+      throw new Error('Could not extract text from AI response');
+    }
+    
     console.log('Received analysis response:', text);
     
     // Clean the response in case there's markdown or extra text
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      console.error('No JSON found in response text');
       throw new Error('No JSON found in response');
     }
     
@@ -238,6 +249,7 @@ Return ONLY valid JSON, no other text.`;
     
     // Validate the response
     if (!profile.faceShape || !profile.texture || !profile.density) {
+      console.error('Invalid profile structure:', profile);
       throw new Error('Invalid profile structure');
     }
     
@@ -245,8 +257,10 @@ Return ONLY valid JSON, no other text.`;
     return profile;
   } catch (error) {
     console.error('Error parsing analysis response:', error);
+    console.error('Full error details:', error instanceof Error ? error.message : String(error));
+    
     // Return a safe default profile
-    console.log('Using default profile as fallback');
+    console.log('Using default profile as fallback (oval/wavy/medium)');
     return {
       faceShape: "oval",
       texture: "wavy",

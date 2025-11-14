@@ -710,7 +710,7 @@ export default function Home() {
               <div style={{
                 position: 'absolute',
                 right: '12px',
-                bottom: '120px',
+                bottom: '10px',
                 zIndex: 10,
                 display: 'flex',
                 flexDirection: 'column',
