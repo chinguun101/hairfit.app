@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { HAIRSTYLES, pickTopHairstyles, UserHairProfile } from '@/lib/hairstyles';
-import heic2any from 'heic2any';
 
 interface GeneratedResult {
   id: number;
@@ -161,6 +160,9 @@ export default function Home() {
         file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
       try {
         console.log('Converting HEIC image to JPEG...');
+        // Dynamically import heic2any only when needed (client-side only)
+        const heic2any = (await import('heic2any')).default;
+        
         const convertedBlob = await heic2any({
           blob: file,
           toType: 'image/jpeg',
