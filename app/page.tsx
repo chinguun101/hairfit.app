@@ -364,7 +364,7 @@ export default function Home() {
         <div style={{
           fontSize: '24px',
           fontWeight: '400',
-          fontFamily: 'sans-serif',
+          fontFamily: 'var(--font-instrument-serif), serif',
           letterSpacing: '0px',
         }}>
           hairfit
