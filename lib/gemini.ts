@@ -222,12 +222,12 @@ Return ONLY valid JSON, no other text.`;
   );
   
   const response = result.response;
-  const text = response.text();
-  
-  console.log('Received analysis response:', text);
   
   // Parse the JSON response
   try {
+    const text = response.text();
+    console.log('Received analysis response:', text);
+    
     // Clean the response in case there's markdown or extra text
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {

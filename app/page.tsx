@@ -690,7 +690,7 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Main Image Container with Swipe Support */}
+            {/* Main Image Container with Swipe Support and TikTok-style Sidebar */}
             <div 
               style={{
                 position: 'relative',
@@ -706,6 +706,71 @@ export default function Home() {
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
             >
+              {/* TikTok-style Right Sidebar - Download Button */}
+              <div style={{
+                position: 'absolute',
+                right: '12px',
+                bottom: '120px',
+                zIndex: 10,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
+                alignItems: 'center',
+              }}>
+                {/* Download Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const filename = allImages[currentImageIndex]?.isOriginal 
+                      ? 'original-photo.png' 
+                      : `hairstyle-${allImages[currentImageIndex]?.id}.png`;
+                    downloadImage(e, allImages[currentImageIndex]?.image!, filename);
+                  }}
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                  onTouchStart={(e) => {
+                    e.currentTarget.style.transform = 'scale(0.9)';
+                  }}
+                  onTouchEnd={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.1)';
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+                  }}
+                >
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#000000"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 15v4a 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                </button>
+              </div>
               {/* Tap Areas for Navigation */}
               <div
                 onClick={goToPrevious}
@@ -859,76 +924,19 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Bottom Action Bar - Instagram Style */}
-            <div style={{
-              padding: '16px 20px',
-              paddingBottom: 'max(16px, env(safe-area-inset-bottom))', // iOS safe area
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              borderTop: '1px solid rgba(255,255,255,0.1)',
-              flexShrink: 0,
-              backgroundColor: '#000000',
-              minHeight: '60px',
-            }}>
+            {/* Status Indicator Bar (if generating) */}
+            {isGenerating && (
               <div style={{
+                padding: '16px 20px',
+                paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
                 display: 'flex',
-                gap: '20px',
+                justifyContent: 'center',
                 alignItems: 'center',
+                borderTop: '1px solid rgba(255,255,255,0.1)',
+                flexShrink: 0,
+                backgroundColor: '#000000',
+                minHeight: '60px',
               }}>
-                {/* Download Button - Show for all images */}
-                <button
-                  onClick={(e) => {
-                    const filename = allImages[currentImageIndex]?.isOriginal 
-                      ? 'original-photo.png' 
-                      : `hairstyle-${allImages[currentImageIndex]?.id}.png`;
-                    downloadImage(e, allImages[currentImageIndex]?.image!, filename);
-                  }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'transform 0.2s ease',
-                    WebkitTapHighlightColor: 'transparent',
-                    minWidth: '44px', // iOS minimum touch target
-                    minHeight: '44px',
-                  }}
-                  onTouchStart={(e) => {
-                    e.currentTarget.style.transform = 'scale(0.95)';
-                  }}
-                  onTouchEnd={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)';
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.1)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)';
-                  }}
-                >
-                  <svg
-                    width="28"
-                    height="28"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#ffffff"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M21 15v4a 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                  </svg>
-                </button>
-              </div>
-              
-              {/* Status Indicator */}
-              {isGenerating && (
                 <div style={{ 
                   width: '14px', 
                   height: '14px', 
@@ -937,8 +945,8 @@ export default function Home() {
                   borderRadius: '50%',
                   animation: 'spin 0.8s linear infinite',
                 }}></div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
 
