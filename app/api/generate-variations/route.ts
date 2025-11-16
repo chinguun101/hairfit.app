@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     // Phase 2: Evaluate generated images
     console.log(`\n🔍 Evaluating ${successfulGenerations.length} successful generations...`);
     
-    const originalDataUrl = `data:${mimeType};base64,${imageBase64}`;
+    const originalDataUrl = `data:${mimeType};base64,${imageData}`;
     const generatedDataUrls = successfulGenerations.map(r => r.output_image!);
 
     const evaluations = await evaluateBatch(
