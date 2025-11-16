@@ -19,10 +19,6 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Hardcoded for testing - REVOKE THIS KEY AFTER TESTING!
-const GEMINI_API_KEY = 'AIzaSyBTBpi5NL5bK546ZBDfGbMMf_xyhH7gag0';
-const API_BASE_URL = 'http://localhost:3000';
-
 // Helper: Convert file to base64
 function fileToBase64(filePath) {
   const buffer = readFileSync(filePath);
