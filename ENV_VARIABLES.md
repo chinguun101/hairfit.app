@@ -28,6 +28,24 @@ Complete guide to all environment variables used in Hairfit App.
 - **Used in**: Client-side and server-side database calls
 - **Example**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (keep secret!)
 
+### `LINKUP_API_KEY`
+- **Required**: Yes (for Celebrity Match feature)
+- **Description**: Linkup API key for celebrity hairstyle image search
+- **Where to get**: https://linkupapi.com/ or https://app.linkup.so
+- **Format**: String API key
+- **Used in**: Celebrity Match tab to search for hairstyle images
+- **Example**: `linkup_xxxxxxxxxxxxx` (keep secret!)
+- **Docs**: https://docs.linkup.so/pages/documentation/get-started/introduction
+
+### `FREEPIK_API_KEY`
+- **Required**: Yes (for Freepik Gemini integration)
+- **Description**: Freepik API key for image generation using Gemini 2.5 Flash
+- **Where to get**: https://docs.freepik.com/introduction (includes $5 free credits)
+- **Format**: String API key
+- **Used in**: Alternative image generation endpoint for testing and model comparison
+- **Example**: `fpk_xxxxxxxxxxxxx` (keep secret!)
+- **Docs**: https://docs.freepik.com/api-reference/text-to-image/google/post-gemini-2-5-flash-image-preview
+
 ## Optional Variables
 
 ### `NEXT_PUBLIC_APP_URL`
@@ -148,6 +166,8 @@ Before deploying:
 - [ ] `GEMINI_API_KEY` - Added and tested
 - [ ] `SUPABASE_URL` - Added and tested
 - [ ] `SUPABASE_ANON_KEY` - Added and tested
+- [ ] `LINKUP_API_KEY` - Added and tested (for Celebrity Match)
+- [ ] `FREEPIK_API_KEY` - Added and tested (for Freepik Gemini integration)
 - [ ] `NEXT_PUBLIC_APP_URL` - Set to production domain
 - [ ] All migrations run in Supabase
 - [ ] Local testing passed
@@ -161,8 +181,13 @@ Before deploying:
 | GEMINI_API_KEY | - | Yes | Server | No |
 | SUPABASE_URL | - | Yes | Both | Yes |
 | SUPABASE_ANON_KEY | - | Yes | Both | Yes |
+| LINKUP_API_KEY | - | Yes* | Server | No |
+| FREEPIK_API_KEY | - | Yes* | Server | No |
 | NEXT_PUBLIC_APP_URL | NEXT_PUBLIC_ | No | Both | Yes |
 | NODE_ENV | - | Auto | Both | Yes |
+
+\* LINKUP_API_KEY required only for Celebrity Match feature
+\* FREEPIK_API_KEY required only for Freepik Gemini integration
 
 **Note**: Variables without `NEXT_PUBLIC_` prefix are only available on the server side.
 

@@ -1,0 +1,243 @@
+[
+  {
+    "name": "Flux",
+    "endpoint": "flux",
+    "url": "https://api.freepik.com/v1/ai/flux",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Flux 1.1",
+    "endpoint": "flux-1-1",
+    "url": "https://api.freepik.com/v1/ai/flux-1-1",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Flux Pro",
+    "endpoint": "flux-pro",
+    "url": "https://api.freepik.com/v1/ai/flux-pro",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Flux Fast",
+    "endpoint": "flux-fast",
+    "url": "https://api.freepik.com/v1/ai/flux-fast",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Flux Realism",
+    "endpoint": "flux-realism",
+    "url": "https://api.freepik.com/v1/ai/flux-realism",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Flux (TTI)",
+    "endpoint": "text-to-image/flux",
+    "url": "https://api.freepik.com/v1/ai/text-to-image/flux",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Flux 1.1 (TTI)",
+    "endpoint": "text-to-image/flux-1-1",
+    "url": "https://api.freepik.com/v1/ai/text-to-image/flux-1-1",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Flux Pro (TTI)",
+    "endpoint": "text-to-image/flux-pro",
+    "url": "https://api.freepik.com/v1/ai/text-to-image/flux-pro",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Flux Fast (TTI)",
+    "endpoint": "text-to-image/flux-fast",
+    "url": "https://api.freepik.com/v1/ai/text-to-image/flux-fast",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Flux Realism (TTI)",
+    "endpoint": "text-to-image/flux-realism",
+    "url": "https://api.freepik.com/v1/ai/text-to-image/flux-realism",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Flux Kontext (TTI)",
+    "endpoint": "text-to-image/flux-kontext",
+    "url": "https://api.freepik.com/v1/ai/text-to-image/flux-kontext",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Imagen",
+    "endpoint": "imagen",
+    "url": "https://api.freepik.com/v1/ai/imagen",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Imagen 3",
+    "endpoint": "imagen-3",
+    "url": "https://api.freepik.com/v1/ai/imagen-3",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Imagen 4",
+    "endpoint": "imagen-4",
+    "url": "https://api.freepik.com/v1/ai/imagen-4",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Imagen (TTI)",
+    "endpoint": "text-to-image/imagen",
+    "url": "https://api.freepik.com/v1/ai/text-to-image/imagen",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Imagen 3 (TTI)",
+    "endpoint": "text-to-image/imagen-3",
+    "url": "https://api.freepik.com/v1/ai/text-to-image/imagen-3",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Imagen 4 (TTI)",
+    "endpoint": "text-to-image/imagen-4",
+    "url": "https://api.freepik.com/v1/ai/text-to-image/imagen-4",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Ideogram",
+    "endpoint": "ideogram",
+    "url": "https://api.freepik.com/v1/ai/ideogram",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Ideogram 3",
+    "endpoint": "ideogram-3",
+    "url": "https://api.freepik.com/v1/ai/ideogram-3",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Ideogram (TTI)",
+    "endpoint": "text-to-image/ideogram",
+    "url": "https://api.freepik.com/v1/ai/text-to-image/ideogram",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Ideogram 3 (TTI)",
+    "endpoint": "text-to-image/ideogram-3",
+    "url": "https://api.freepik.com/v1/ai/text-to-image/ideogram-3",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Seedream",
+    "endpoint": "seedream",
+    "url": "https://api.freepik.com/v1/ai/seedream",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Seedream 3",
+    "endpoint": "seedream-3",
+    "url": "https://api.freepik.com/v1/ai/seedream-3",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Seedream 4",
+    "endpoint": "seedream-4",
+    "url": "https://api.freepik.com/v1/ai/seedream-4",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Seedream (TTI)",
+    "endpoint": "text-to-image/seedream",
+    "url": "https://api.freepik.com/v1/ai/text-to-image/seedream",
+    "status": 200,
+    "available": true,
+    "message": "✅ SUCCESS - Endpoint works!",
+    "taskId": "8a142d35-2889-4cd4-b4dc-436b71c2b11b"
+  },
+  {
+    "name": "Seedream 3 (TTI)",
+    "endpoint": "text-to-image/seedream-3",
+    "url": "https://api.freepik.com/v1/ai/text-to-image/seedream-3",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Seedream 4 (TTI)",
+    "endpoint": "text-to-image/seedream-4",
+    "url": "https://api.freepik.com/v1/ai/text-to-image/seedream-4",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Google Imagen (TTI)",
+    "endpoint": "text-to-image/google-imagen",
+    "url": "https://api.freepik.com/v1/ai/text-to-image/google-imagen",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Google Imagen 3",
+    "endpoint": "text-to-image/google/imagen-3",
+    "url": "https://api.freepik.com/v1/ai/text-to-image/google/imagen-3",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  },
+  {
+    "name": "Google Imagen 4",
+    "endpoint": "text-to-image/google/imagen-4",
+    "url": "https://api.freepik.com/v1/ai/text-to-image/google/imagen-4",
+    "status": 404,
+    "available": false,
+    "message": "❌ NOT FOUND - Endpoint does not exist"
+  }
+]

@@ -150,4 +150,3 @@ export async function getHairstylesBySession(
 export function isSupabaseConfigured(): boolean {
   return !!(supabaseUrl && supabaseAnonKey);
 }
-

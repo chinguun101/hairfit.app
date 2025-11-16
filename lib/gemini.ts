@@ -269,3 +269,94 @@ Return ONLY valid JSON, no other text.`;
   }
 };
 
+/**
+ * Celebrity match interface
+ */
+export interface CelebrityMatch {
+  name: string;
+  similarity: number; // 0-1 scale
+  reasoning: string;
+  faceShape: string;
+  keyFeatures: string[];
+}
+
+/**
+ * Finds celebrity matches for a given user photo
+ * @param originalImagePart The original image as a Gemini API part
+ * @param apiKey The Gemini API key
+ * @returns A promise that resolves to an array of celebrity matches
+ */
+export const findCelebrityMatches = async (
+  originalImagePart: { inlineData: { mimeType: string; data: string; } },
+  apiKey: string
+): Promise<CelebrityMatch[]> => {
+  console.log('Finding celebrity matches...');
+  
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  
+  const prompt = `Analyze this person's facial features and identify 5 celebrities they most closely resemble.
+
+Focus on:
+- Face shape (oval, round, square, heart, long, diamond)
+- Bone structure (cheekbones, jawline, forehead proportions)
+- Feature proportions and placement
+- Overall facial harmony
+
+Important: Choose celebrities who are well-known and have distinctive, trendy hairstyles that would work well as references.
+
+Return ONLY valid JSON in this exact format:
+{
+  "matches": [
+    {
+      "name": "Celebrity Full Name",
+      "similarity": 0.85,
+      "reasoning": "Brief explanation of why they match",
+      "faceShape": "oval",
+      "keyFeatures": ["feature1", "feature2", "feature3"]
+    }
+  ]
+}
+
+List 5 celebrities in order of similarity (most similar first). Ensure similarity scores are between 0 and 1.`;
+
+  const textPart = { text: prompt };
+  
+  console.log('Sending photo to Gemini for celebrity matching');
+  
+  const result = await retryWithBackoff(() =>
+    withTimeout(
+      model.generateContent({
+        contents: [{ role: "user", parts: [originalImagePart, textPart] }],
+      }),
+      API_TIMEOUT_MS,
+      `Celebrity matching timed out after ${API_TIMEOUT_MS / 1000}s`
+    )
+  );
+  
+  const response = result.response;
+  
+  try {
+    const text = response.text();
+    console.log('Celebrity match response:', text);
+    
+    // Extract JSON from response
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('No JSON found in celebrity match response');
+    }
+    
+    const parsed = JSON.parse(jsonMatch[0]);
+    
+    if (!parsed.matches || !Array.isArray(parsed.matches)) {
+      throw new Error('Invalid matches structure');
+    }
+    
+    console.log(`Found ${parsed.matches.length} celebrity matches`);
+    return parsed.matches;
+  } catch (error) {
+    console.error('Error parsing celebrity matches:', error);
+    // Return empty array on error
+    return [];
+  }
+};

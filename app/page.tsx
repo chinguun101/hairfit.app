@@ -2,6 +2,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { HAIRSTYLES, pickTopHairstyles, UserHairProfile } from '@/lib/hairstyles';
+import { CelebrityMatch } from '@/lib/gemini';
+import { LinkupImage } from '@/lib/linkup-search';
+import { EvolutionVariations, EvolutionVariation } from '@/components/EvolutionVariations';
+
+interface CelebrityMatchWithImages extends CelebrityMatch {
+  hairstyleImages: LinkupImage[];
+}
 
 interface GeneratedResult {
   id: number;
@@ -19,7 +26,13 @@ interface SessionHistoryItem {
   timestamp: number;
 }
 
+type TabType = 'ai-generator' | 'celebrity-match';
+
 export default function Home() {
+  // Tab state
+  const [activeTab, setActiveTab] = useState<TabType>('ai-generator');
+  
+  // AI Generator states (existing)
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [results, setResults] = useState<GeneratedResult[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -39,7 +52,32 @@ export default function Home() {
   const [isMobile, setIsMobile] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [sessionHistory, setSessionHistory] = useState<SessionHistoryItem[]>([]);
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+  const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
+  const [showVideoModal, setShowVideoModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Celebrity Match states (new)
+  const [celebrityImage, setCelebrityImage] = useState<string | null>(null);
+  const [celebrityMatches, setCelebrityMatches] = useState<CelebrityMatchWithImages[]>([]);
+  const [isFindingCelebrities, setIsFindingCelebrities] = useState(false);
+  const [celebrityError, setCelebrityError] = useState<string | null>(null);
+  const fileInputCelebrityRef = useRef<HTMLInputElement>(null);
+  
+  // Reference-based generation states
+  const [selectedReference, setSelectedReference] = useState<{
+    imageUrl: string;
+    celebrityName: string;
+    imageTitle: string;
+  } | null>(null);
+  const [isGeneratingFromReference, setIsGeneratingFromReference] = useState(false);
+  const [generatedFromReference, setGeneratedFromReference] = useState<string | null>(null);
+  
+  // Evolution system states
+  const [evolutionVariations, setEvolutionVariations] = useState<EvolutionVariation[]>([]);
+  const [isGeneratingVariations, setIsGeneratingVariations] = useState(false);
+  const [showEvolutionGrid, setShowEvolutionGrid] = useState(false);
+  const [celebritySessionId, setCelebritySessionId] = useState<string | null>(null);
 
   // Fun loading messages
   const loadingMessages = [
@@ -257,112 +295,164 @@ export default function Home() {
       }
     }
 
-    // Display original image
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setOriginalImage(event.target?.result as string);
-    };
-    reader.readAsDataURL(processedFile);
+    // Convert file to base64 once
+    const base64 = await fileToBase64(processedFile);
+    const base64Data = base64.split(',')[1]; // Remove data URL prefix
+    const mimeType = processedFile.type;
 
-    // Reset state
+    // Display original image for both tabs
+    setOriginalImage(base64);
+    setCelebrityImage(base64);
+    
+    // Create new session for evolution tracking
+    const newCelebritySessionId = `celebrity-session-${Date.now()}`;
+    setCelebritySessionId(newCelebritySessionId);
+
+    // Reset state for both tabs
     setResults([]);
     setUserProfile(null);
     setSessionId(null);
     setSelectedHairstyles([]);
     setRateLimitError(null);
     setRemainingUses(null);
+    setCelebrityMatches([]);
+    setCelebrityError(null);
 
-    try {
-      // Convert file to base64
-      const base64 = await fileToBase64(processedFile);
-      const base64Data = base64.split(',')[1]; // Remove data URL prefix
-      const mimeType = processedFile.type;
+    console.log('🚀 Starting both AI Generator and Celebrity Match processing...');
 
-      // Step 1: Analyze the photo
-      setIsAnalyzing(true);
-      console.log('Analyzing photo...');
-      
-      const analyzeFormData = new FormData();
-      analyzeFormData.append('image', base64Data);
-      analyzeFormData.append('mimeType', mimeType);
-
-      const analyzeResponse = await fetch('/api/analyze-photo', {
-        method: 'POST',
-        body: analyzeFormData,
-      });
-
-      if (!analyzeResponse.ok) {
-        const errorData = await analyzeResponse.json();
-        
-        // Check if it's a rate limit error (429)
-        if (analyzeResponse.status === 429) {
-          setRateLimitError(errorData.error || 'You have reached your usage limit. More credits coming soon!');
-          setIsAnalyzing(false);
-          return;
-        }
-        
-        throw new Error(errorData.error || 'Failed to analyze photo');
-      }
-
-      const { profile, sessionId: newSessionId, remaining } = await analyzeResponse.json();
-      setUserProfile(profile);
-      setSessionId(newSessionId);
-      setRemainingUses(remaining);
-      console.log('User profile:', profile);
-      console.log('Session ID:', newSessionId);
-      console.log('Remaining uses:', remaining);
-      
-      setIsAnalyzing(false);
-
-      // Step 2: Pick the top 10 hairstyles based on profile
-      const topHairstyles = pickTopHairstyles(profile, 10);
-      setSelectedHairstyles(topHairstyles);
-      console.log('Selected top 10 hairstyles:', topHairstyles.map(h => h.name));
-
-      // Step 3: Generate the selected hairstyles one by one
-      setIsGenerating(true);
-      
-      for (const hairstyle of topHairstyles) {
+    // Start both processes in parallel
+    Promise.all([
+      // Process 1: AI Generator (analyze + generate 10 hairstyles)
+      (async () => {
         try {
+          // Step 1: Analyze the photo
+          setIsAnalyzing(true);
+          console.log('📊 AI Generator: Analyzing photo...');
+          
+          const analyzeFormData = new FormData();
+          analyzeFormData.append('image', base64Data);
+          analyzeFormData.append('mimeType', mimeType);
+
+          const analyzeResponse = await fetch('/api/analyze-photo', {
+            method: 'POST',
+            body: analyzeFormData,
+          });
+
+          if (!analyzeResponse.ok) {
+            const errorData = await analyzeResponse.json();
+            
+            // Check if it's a rate limit error (429)
+            if (analyzeResponse.status === 429) {
+              setRateLimitError(errorData.error || 'You have reached your usage limit. More credits coming soon!');
+              setIsAnalyzing(false);
+              return;
+            }
+            
+            throw new Error(errorData.error || 'Failed to analyze photo');
+          }
+
+          const { profile, sessionId: newSessionId, remaining } = await analyzeResponse.json();
+          setUserProfile(profile);
+          setSessionId(newSessionId);
+          setRemainingUses(remaining);
+          console.log('✅ AI Generator: User profile analyzed:', profile);
+          
+          setIsAnalyzing(false);
+
+          // Step 2: Pick the top 10 hairstyles based on profile
+          const topHairstyles = pickTopHairstyles(profile, 10);
+          setSelectedHairstyles(topHairstyles);
+          console.log('✅ AI Generator: Selected top 10 hairstyles');
+
+          // Step 3: Generate the selected hairstyles one by one
+          setIsGenerating(true);
+          
+          for (const hairstyle of topHairstyles) {
+            try {
+              const formData = new FormData();
+              formData.append('image', base64Data);
+              formData.append('mimeType', mimeType);
+              formData.append('hairstyleId', hairstyle.id.toString());
+              if (newSessionId) {
+                formData.append('sessionId', newSessionId);
+              }
+
+              const response = await fetch('/api/generate-hairstyles', {
+                method: 'POST',
+                body: formData,
+              });
+
+              if (!response.ok) {
+                throw new Error('Failed to generate hairstyle');
+              }
+
+              const result = await response.json();
+              
+              // Add result immediately to show it in real-time
+              setResults(prev => [...prev, result]);
+            } catch (error) {
+              console.error(`❌ AI Generator: Error generating hairstyle ${hairstyle.id}:`, error);
+              // Add error result
+              setResults(prev => [...prev, {
+                id: hairstyle.id,
+                name: hairstyle.name,
+                error: error instanceof Error ? error.message : 'Unknown error',
+                success: false
+              }]);
+            }
+          }
+          
+          setIsGenerating(false);
+          console.log('✅ AI Generator: Complete!');
+        } catch (error) {
+          console.error('❌ AI Generator: Error:', error);
+          setIsAnalyzing(false);
+          setIsGenerating(false);
+        }
+      })(),
+
+      // Process 2: Celebrity Match (find celebrities + hairstyle images)
+      (async () => {
+        try {
+          setIsFindingCelebrities(true);
+          console.log('⭐ Celebrity Match: Finding celebrity matches...');
+          
           const formData = new FormData();
           formData.append('image', base64Data);
           formData.append('mimeType', mimeType);
-          formData.append('hairstyleId', hairstyle.id.toString());
-          if (newSessionId) {
-            formData.append('sessionId', newSessionId);
-          }
 
-          const response = await fetch('/api/generate-hairstyles', {
+          const response = await fetch('/api/find-celebrity-matches', {
             method: 'POST',
             body: formData,
           });
 
           if (!response.ok) {
-            throw new Error('Failed to generate hairstyle');
+            const errorData = await response.json();
+            
+            // Check if it's a rate limit error (429)
+            if (response.status === 429) {
+              setCelebrityError(errorData.error || 'You have reached your usage limit. More credits coming soon!');
+              setIsFindingCelebrities(false);
+              return;
+            }
+            
+            throw new Error(errorData.error || 'Failed to find celebrity matches');
           }
 
-          const result = await response.json();
+          const { matches } = await response.json();
+          setCelebrityMatches(matches);
+          console.log('✅ Celebrity Match: Found', matches.length, 'celebrities with hairstyles');
           
-          // Add result immediately to show it in real-time
-          setResults(prev => [...prev, result]);
+          setIsFindingCelebrities(false);
         } catch (error) {
-          console.error(`Error generating hairstyle ${hairstyle.id}:`, error);
-          // Add error result
-          setResults(prev => [...prev, {
-            id: hairstyle.id,
-            name: hairstyle.name,
-            error: error instanceof Error ? error.message : 'Unknown error',
-            success: false
-          }]);
+          console.error('❌ Celebrity Match: Error:', error);
+          setCelebrityError(error instanceof Error ? error.message : 'Unknown error');
+          setIsFindingCelebrities(false);
         }
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error processing photo: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    } finally {
-      setIsAnalyzing(false);
-      setIsGenerating(false);
-    }
+      })()
+    ]).then(() => {
+      console.log('🎉 Both processes complete!');
+    });
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -499,6 +589,180 @@ export default function Home() {
     setSelectedHairstyles(hairstyles);
   };
 
+  const generateVideo = async () => {
+    if (allImages.length === 0) {
+      alert('No images to create video from!');
+      return;
+    }
+
+    setIsGeneratingVideo(true);
+    
+    try {
+      console.log(`Generating video from ${allImages.length} images...`);
+      
+      // Prepare form data
+      const formData = new FormData();
+      
+      // Add all images
+      allImages.forEach((img, index) => {
+        formData.append(`image_${index}`, img.image);
+      });
+      
+      // Add options
+      formData.append('duration', '1'); // 1 second per image
+      formData.append('transition', 'fade');
+      formData.append('quality', 'high');
+      
+      // Call video generation API
+      const response = await fetch('/api/generate-video', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate video');
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.video) {
+        setGeneratedVideo(result.video);
+        setShowVideoModal(true);
+        console.log('Video generated successfully!');
+      } else {
+        throw new Error('Video generation failed');
+      }
+    } catch (error) {
+      console.error('Error generating video:', error);
+      alert('Failed to generate video: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setIsGeneratingVideo(false);
+    }
+  };
+
+  const downloadVideo = () => {
+    if (!generatedVideo) return;
+    
+    const link = document.createElement('a');
+    link.href = generatedVideo;
+    link.download = 'hairfit-slideshow.mp4';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+
+  // Handle clicking on a hairstyle reference image - immediately start generating
+  const handleReferenceImageClick = async (imageUrl: string, celebrityName: string, imageTitle: string) => {
+    if (!celebrityImage) return;
+
+    // Set reference for tracking
+    setSelectedReference({
+      imageUrl,
+      celebrityName,
+      imageTitle: imageTitle || `${celebrityName} hairstyle`,
+    });
+
+    // Start generating immediately - add to library, don't replace
+    setIsGeneratingVariations(true);
+    setShowEvolutionGrid(true);
+
+    try {
+      const currentSessionId = celebritySessionId || `session-${Date.now()}`;
+
+      // Convert celebrity image to base64 if needed
+      const base64Data = celebrityImage.split(',')[1];
+      const mimeType = celebrityImage.split(';')[0].split(':')[1];
+
+      const formData = new FormData();
+      formData.append('image', base64Data);
+      formData.append('mimeType', mimeType);
+      formData.append('referenceImageUrl', imageUrl);
+      formData.append('sessionId', currentSessionId);
+      formData.append('useDynamicPrompts', 'true');
+
+      const response = await fetch('/api/generate-variations-stream', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to start generation');
+      }
+
+      if (!response.body) {
+        throw new Error('No response body');
+      }
+
+      // Read the stream
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        
+        // Process complete messages
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.slice(6));
+            
+            if (data.type === 'complete') {
+              // Append new variation to the library
+              setEvolutionVariations(prev => [...prev, data.variation]);
+            } else if (data.type === 'done') {
+              setIsGeneratingVariations(false);
+            } else if (data.type === 'error') {
+              console.error(`Variation ${data.index + 1} error:`, data.error);
+            }
+          }
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error generating variations:', error);
+      alert('Failed to generate variations: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      setIsGeneratingVariations(false);
+      setShowEvolutionGrid(false);
+    }
+  };
+
+  // Handle user selection of evolution variation
+  const handleEvolutionSelection = async (variation: EvolutionVariation) => {
+    console.log('User selected:', variation.strategyName);
+    
+    // Record selection to update strategy scores
+    if (variation.id && celebritySessionId) {
+      try {
+        await fetch('/api/record-selection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            attemptId: variation.id,
+            sessionId: celebritySessionId
+          })
+        });
+      } catch (error) {
+        console.error('Failed to record selection:', error);
+      }
+    }
+    
+    // Set the selected image as the result
+    setGeneratedFromReference(variation.image);
+    
+    // Hide evolution grid
+    setShowEvolutionGrid(false);
+  };
+
+
   return (
     <div style={{
       height: '100vh',
@@ -514,69 +778,121 @@ export default function Home() {
     }}>
       {/* Instagram-style Header */}
       <header style={{
-        padding: '16px 20px',
         borderBottom: '1px solid rgba(255,255,255,0.1)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         backgroundColor: '#000000',
         zIndex: 100,
         flexShrink: 0,
       }}>
+        {/* Top bar with logo and buttons */}
         <div style={{
-          fontSize: '36px',
-          fontWeight: '400',
-          fontFamily: 'var(--font-instrument-serif), serif',
-          letterSpacing: '1px',
-        }}>
-          hairfit
-        </div>
-        <div style={{
+          padding: '16px 20px',
           display: 'flex',
-          gap: '12px',
+          justifyContent: 'space-between',
           alignItems: 'center',
         }}>
-          {sessionHistory.length > 0 && (
-            <button
-              onClick={() => setShowHistory(true)}
-              style={{
-                padding: '8px 16px',
-                fontSize: '14px',
-                fontWeight: '600',
-                backgroundColor: 'transparent',
-                color: '#A47864',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              History
-            </button>
-          )}
-          {allImages.length > 0 && (
-            <button
-              onClick={() => {
-                setOriginalImage(null);
-                setResults([]);
-                setUserProfile(null);
-                setSessionId(null);
-                setSelectedHairstyles([]);
-                setCurrentImageIndex(0);
-                setRateLimitError(null);
-                setRemainingUses(null);
-              }}
-              style={{
-                padding: '8px 16px',
-                fontSize: '14px',
-                fontWeight: '600',
-                backgroundColor: 'transparent',
-                color: '#A47864',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              Upload New
-            </button>
-          )}
+          <div style={{
+            fontSize: '36px',
+            fontWeight: '400',
+            fontFamily: 'var(--font-instrument-serif), serif',
+            letterSpacing: '1px',
+          }}>
+            hairfit
+          </div>
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'center',
+          }}>
+            {sessionHistory.length > 0 && activeTab === 'ai-generator' && (
+              <button
+                onClick={() => setShowHistory(true)}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  backgroundColor: 'transparent',
+                  color: '#A47864',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                History
+              </button>
+            )}
+            {((allImages.length > 0 && activeTab === 'ai-generator') || 
+              (celebrityImage && activeTab === 'celebrity-match')) && (
+              <button
+                onClick={() => {
+                  if (activeTab === 'ai-generator') {
+                    setOriginalImage(null);
+                    setResults([]);
+                    setUserProfile(null);
+                    setSessionId(null);
+                    setSelectedHairstyles([]);
+                    setCurrentImageIndex(0);
+                    setRateLimitError(null);
+                    setRemainingUses(null);
+                  } else {
+                    setCelebrityImage(null);
+                    setCelebrityMatches([]);
+                    setCelebrityError(null);
+                  }
+                }}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  backgroundColor: 'transparent',
+                  color: '#A47864',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                Upload New
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div style={{
+          display: 'flex',
+          paddingLeft: '20px',
+          paddingRight: '20px',
+          borderTop: '1px solid rgba(255,255,255,0.05)',
+        }}>
+          <button
+            onClick={() => setActiveTab('ai-generator')}
+            style={{
+              padding: '12px 24px',
+              fontSize: '15px',
+              fontWeight: activeTab === 'ai-generator' ? '600' : '400',
+              backgroundColor: 'transparent',
+              color: activeTab === 'ai-generator' ? '#ffffff' : '#888888',
+              border: 'none',
+              borderBottom: activeTab === 'ai-generator' ? '2px solid #A47864' : '2px solid transparent',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            AI Generator
+          </button>
+          <button
+            onClick={() => setActiveTab('celebrity-match')}
+            style={{
+              padding: '12px 24px',
+              fontSize: '15px',
+              fontWeight: activeTab === 'celebrity-match' ? '600' : '400',
+              backgroundColor: 'transparent',
+              color: activeTab === 'celebrity-match' ? '#ffffff' : '#888888',
+              border: 'none',
+              borderBottom: activeTab === 'celebrity-match' ? '2px solid #A47864' : '2px solid transparent',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            Celebrity Match
+          </button>
         </div>
       </header>
 
@@ -592,6 +908,9 @@ export default function Home() {
         position: 'relative',
       }}>
 
+        {/* AI GENERATOR TAB */}
+        {activeTab === 'ai-generator' && (
+          <>
         {/* Rate Limit Error Screen */}
         {rateLimitError && (
           <div style={{
@@ -900,6 +1219,68 @@ export default function Home() {
                 gap: '12px',
                 alignItems: 'center',
               }}>
+                {/* Generate Video Button */}
+                {!isGenerating && allImages.length >= 2 && (
+                  <button
+                    onClick={generateVideo}
+                    disabled={isGeneratingVideo}
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      backgroundColor: isGeneratingVideo ? 'rgba(100, 100, 100, 0.95)' : 'rgba(255, 59, 48, 0.95)',
+                      border: 'none',
+                      cursor: isGeneratingVideo ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      WebkitTapHighlightColor: 'transparent',
+                      position: 'relative',
+                    }}
+                    onTouchStart={(e) => {
+                      if (!isGeneratingVideo) e.currentTarget.style.transform = 'scale(0.9)';
+                    }}
+                    onTouchEnd={(e) => {
+                      if (!isGeneratingVideo) e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isGeneratingVideo) {
+                        e.currentTarget.style.transform = 'scale(1.1)';
+                        e.currentTarget.style.backgroundColor = 'rgba(255, 59, 48, 1)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isGeneratingVideo) {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.backgroundColor = 'rgba(255, 59, 48, 0.95)';
+                      }
+                    }}
+                  >
+                    {isGeneratingVideo ? (
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        border: '2px solid rgba(255,255,255,0.3)',
+                        borderTop: '2px solid #ffffff',
+                        borderRadius: '50%',
+                        animation: 'spin 0.8s linear infinite',
+                      }} />
+                    ) : (
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="#ffffff"
+                        stroke="none"
+                      >
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    )}
+                  </button>
+                )}
+
                 {/* Download All Button */}
                 {allImages.filter(img => !img.isOriginal).length > 0 && (
                   <button
@@ -1457,6 +1838,898 @@ export default function Home() {
                   <p style={{ fontSize: '14px' }}>Your previous sessions will appear here</p>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Video Modal */}
+        {showVideoModal && generatedVideo && (
+          <div
+            onClick={() => setShowVideoModal(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.95)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              backdropFilter: 'blur(10px)',
+              padding: '20px',
+            }}
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                maxWidth: '600px',
+                width: '100%',
+                backgroundColor: '#1a1a1a',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              }}
+            >
+              {/* Header */}
+              <div style={{
+                padding: '20px',
+                borderBottom: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}>
+                <h2 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  margin: 0,
+                  color: '#ffffff',
+                }}>
+                  🎬 Your Hairstyle Video
+                </h2>
+                <button
+                  onClick={() => setShowVideoModal(false)}
+                  style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: '#ffffff',
+                    fontSize: '20px',
+                    fontWeight: '300',
+                    transition: 'background 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Video Player */}
+              <div style={{
+                padding: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '20px',
+              }}>
+                <video
+                  src={generatedVideo}
+                  controls
+                  autoPlay
+                  loop
+                  style={{
+                    width: '100%',
+                    maxHeight: '70vh',
+                    borderRadius: '8px',
+                    backgroundColor: '#000',
+                  }}
+                />
+
+                {/* Action Buttons */}
+                <div style={{
+                  display: 'flex',
+                  gap: '12px',
+                  justifyContent: 'stretch',
+                }}>
+                  <button
+                    onClick={downloadVideo}
+                    style={{
+                      flex: 1,
+                      padding: '14px 24px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      backgroundColor: '#A47864',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#8B6854';
+                      e.currentTarget.style.transform = 'scale(1.02)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#A47864';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    Download Video
+                  </button>
+                </div>
+
+                {/* Info Text */}
+                <p style={{
+                  fontSize: '13px',
+                  color: '#a8a8a8',
+                  textAlign: 'center',
+                  margin: 0,
+                }}>
+                  TikTok-ready vertical format • 1080x1920 • {allImages.length} images
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+          </>
+        )}
+
+        {/* CELEBRITY MATCH TAB */}
+        {activeTab === 'celebrity-match' && (
+          <>
+            {/* Error Screen */}
+            {celebrityError && (
+              <div style={{
+                width: '100%',
+                maxWidth: '500px',
+                margin: '0 auto',
+                padding: '40px 20px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '60vh',
+                textAlign: 'center',
+              }}>
+                <div style={{
+                  width: '80px',
+                  height: '80px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(255, 59, 48, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '24px',
+                }}>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ff3b30" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                </div>
+                <h2 style={{
+                  fontSize: '22px',
+                  marginBottom: '12px',
+                  fontWeight: '600',
+                  color: '#ffffff',
+                }}>
+                  Error
+                </h2>
+                <p style={{
+                  fontSize: '15px',
+                  color: '#a8a8a8',
+                  marginBottom: '32px',
+                  lineHeight: '1.5',
+                  maxWidth: '380px',
+                }}>
+                  {celebrityError}
+                </p>
+                <button
+                  onClick={() => {
+                    setCelebrityError(null);
+                    setCelebrityImage(null);
+                  }}
+                  style={{
+                    padding: '12px 32px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    backgroundColor: '#0095f6',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1877f2'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#0095f6'}
+                >
+                  Go Back
+                </button>
+              </div>
+            )}
+
+            {/* Upload Screen - Show when no image loaded yet */}
+            {!celebrityImage && !isFindingCelebrities && !celebrityError && (
+              <div
+                style={{
+                  width: '100%',
+                  maxWidth: '600px',
+                  margin: '0 auto',
+                  padding: '40px 20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: '60vh',
+                }}
+              >
+                <div style={{
+                  width: '96px',
+                  height: '96px',
+                  borderRadius: '50%',
+                  border: '2px solid rgba(255,255,255,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '32px',
+                }}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                </div>
+
+                <h2 style={{
+                  fontSize: '22px',
+                  marginBottom: '12px',
+                  fontWeight: '300',
+                  color: '#ffffff',
+                  textAlign: 'center',
+                }}>
+                  Upload Your Photo
+                </h2>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#a8a8a8',
+                  marginBottom: '24px',
+                  textAlign: 'center',
+                  maxWidth: '400px',
+                  lineHeight: '1.6',
+                }}>
+                  Go to the AI Generator tab to upload your photo. Both tabs will process automatically!
+                </p>
+                
+                <button
+                  onClick={() => setActiveTab('ai-generator')}
+                  style={{
+                    padding: '12px 32px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    backgroundColor: '#A47864',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#8B6854'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#A47864'}
+                >
+                  Go to AI Generator
+                </button>
+              </div>
+            )}
+
+            {/* Loading Screen */}
+            {isFindingCelebrities && (
+              <div style={{
+                width: '100%',
+                maxWidth: '600px',
+                margin: '0 auto',
+                padding: '40px 20px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '60vh',
+              }}>
+                <div style={{ 
+                  width: '60px', 
+                  height: '60px', 
+                  border: '3px solid rgba(255,255,255,0.1)',
+                  borderTop: '3px solid #A47864',
+                  borderRadius: '50%',
+                  animation: 'spin 0.8s linear infinite',
+                  margin: '0 auto 24px'
+                }}></div>
+                <p style={{
+                  fontSize: '16px',
+                  color: '#ffffff',
+                  marginBottom: '12px',
+                  fontWeight: '400',
+                }}>
+                  finding your celebrity matches
+                </p>
+                <p style={{
+                  fontSize: '13px',
+                  color: '#a8a8a8',
+                  textAlign: 'center',
+                  maxWidth: '340px',
+                  marginBottom: '8px',
+                }}>
+                  Analyzing your facial features and bone structure...
+                </p>
+                <p style={{
+                  fontSize: '12px',
+                  color: '#666',
+                  textAlign: 'center',
+                  maxWidth: '340px',
+                }}>
+                  Then searching for hairstyle inspiration
+                </p>
+              </div>
+            )}
+
+            {/* Results Screen - Celebrity Matches */}
+            {celebrityMatches.length > 0 && !isFindingCelebrities && (
+              <div style={{
+                width: '100%',
+                maxWidth: '1600px',
+                margin: '0 auto',
+                padding: '20px',
+                overflowY: 'auto',
+                WebkitOverflowScrolling: 'touch',
+              }}>
+                {/* Pinterest-style Masonry Grid */}
+                <div style={{
+                  columnCount: 5,
+                  columnGap: '16px',
+                }}>
+                  {celebrityMatches.flatMap((match, matchIndex) => 
+                    match.hairstyleImages?.map((image, imgIndex) => (
+                      <div
+                        key={`${matchIndex}-${imgIndex}`}
+                        onClick={() => handleReferenceImageClick(image.url, match.name, image.title || '')}
+                        style={{
+                          position: 'relative',
+                          marginBottom: '16px',
+                          breakInside: 'avoid',
+                          cursor: 'pointer',
+                          borderRadius: '16px',
+                          overflow: 'hidden',
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          display: 'inline-block',
+                          width: '100%',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-4px)';
+                          e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.4)';
+                          const overlay = e.currentTarget.querySelector('[data-overlay]') as HTMLElement;
+                          if (overlay) overlay.style.opacity = '1';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                          const overlay = e.currentTarget.querySelector('[data-overlay]') as HTMLElement;
+                          if (overlay) overlay.style.opacity = '0';
+                        }}
+                      >
+                        <img
+                          src={image.url}
+                          alt={image.title || `Hairstyle inspiration`}
+                          style={{
+                            width: '100%',
+                            height: 'auto',
+                            display: 'block',
+                            borderRadius: '16px',
+                          }}
+                          onError={(e) => {
+                            // Hide broken images
+                            (e.currentTarget.parentElement as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                        {/* Hover overlay - Pinterest style */}
+                        <div 
+                          data-overlay
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.5) 100%)',
+                            opacity: 0,
+                            transition: 'opacity 0.3s ease',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'flex-end',
+                            alignItems: 'center',
+                            padding: '16px',
+                            borderRadius: '16px',
+                          }}
+                        >
+                          <div style={{
+                            background: '#ffffff',
+                            borderRadius: '24px',
+                            padding: '10px 20px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                          }}>
+                            <span style={{
+                              fontSize: '16px',
+                            }}>✨</span>
+                            <span style={{
+                              color: '#000000',
+                              fontSize: '13px',
+                              fontWeight: '600',
+                            }}>
+                              Try This
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )) || []
+                  )}
+                </div>
+
+                {/* Evolution Grid - Library of generated variations */}
+                {showEvolutionGrid && (
+                  <div style={{
+                    marginTop: '32px',
+                    paddingTop: '32px',
+                    borderTop: '1px solid rgba(164, 120, 100, 0.2)',
+                  }}>
+                    {/* Pure pictures - no text */}
+                    <EvolutionVariations
+                      variations={evolutionVariations}
+                      onSelect={handleEvolutionSelection}
+                      isLoading={isGeneratingVariations}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Remove the confirmation modal - we generate immediately now */}
+        {/* Reference Generation Confirmation Modal - REMOVED */}
+        {false && selectedReference && !generatedFromReference && !showEvolutionGrid && (
+          <div
+            onClick={() => setSelectedReference(null)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.95)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              backdropFilter: 'blur(10px)',
+              padding: '20px',
+            }}
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                maxWidth: '600px',
+                width: '100%',
+                backgroundColor: '#1a1a1a',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              }}
+            >
+              {/* Header */}
+              <div style={{
+                padding: '24px',
+                borderBottom: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}>
+                <h2 style={{
+                  fontSize: '22px',
+                  fontWeight: '600',
+                  margin: 0,
+                  color: '#ffffff',
+                }}>
+                  Generate This Look?
+                </h2>
+                <button
+                  onClick={() => setSelectedReference(null)}
+                  style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '36px',
+                    height: '36px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: '#ffffff',
+                    fontSize: '20px',
+                    fontWeight: '300',
+                    transition: 'background 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Content */}
+              <div style={{
+                padding: '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '24px',
+              }}>
+                {/* Image Comparison */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '20px',
+                }}>
+                  {/* Your Photo */}
+                  <div>
+                    <div style={{
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#a8a8a8',
+                      marginBottom: '8px',
+                      textAlign: 'center',
+                    }}>
+                      Your Photo
+                    </div>
+                    <div style={{
+                      aspectRatio: '3/4',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      border: '2px solid rgba(255,255,255,0.1)',
+                    }}>
+                      <img
+                        src={celebrityImage!}
+                        alt="Your photo"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Reference Hairstyle */}
+                  <div>
+                    <div style={{
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#a8a8a8',
+                      marginBottom: '8px',
+                      textAlign: 'center',
+                    }}>
+                      {selectedReference.celebrityName}'s Look
+                    </div>
+                    <div style={{
+                      aspectRatio: '3/4',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      border: '2px solid #A47864',
+                    }}>
+                      <img
+                        src={selectedReference.imageUrl}
+                        alt={selectedReference.imageTitle}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Info Text */}
+                <div style={{
+                  padding: '16px',
+                  backgroundColor: 'rgba(164, 120, 100, 0.1)',
+                  borderRadius: '12px',
+                  borderLeft: '3px solid #A47864',
+                }}>
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#cccccc',
+                    margin: 0,
+                    lineHeight: '1.5',
+                  }}>
+                    We'll use AI to transfer this hairstyle to your photo, matching the style, length, and color while keeping your facial features unchanged.
+                  </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div style={{
+                  display: 'flex',
+                  gap: '12px',
+                }}>
+                  <button
+                    onClick={() => setSelectedReference(null)}
+                    style={{
+                      flex: 1,
+                      padding: '14px 24px',
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      backgroundColor: 'transparent',
+                      color: '#a8a8a8',
+                      border: '2px solid rgba(255,255,255,0.2)',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)';
+                      e.currentTarget.style.color = '#ffffff';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                      e.currentTarget.style.color = '#a8a8a8';
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={generateFromReference}
+                    disabled={isGeneratingVariations}
+                    style={{
+                      flex: 1,
+                      padding: '14px 24px',
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      backgroundColor: isGeneratingVariations ? '#666' : '#A47864',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '12px',
+                      cursor: isGeneratingVariations ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isGeneratingVariations) {
+                        e.currentTarget.style.backgroundColor = '#8B6854';
+                        e.currentTarget.style.transform = 'scale(1.02)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isGeneratingVariations) {
+                        e.currentTarget.style.backgroundColor = '#A47864';
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }
+                    }}
+                  >
+                    {isGeneratingVariations ? (
+                      <>
+                        <div style={{
+                          width: '16px',
+                          height: '16px',
+                          border: '2px solid rgba(255,255,255,0.3)',
+                          borderTop: '2px solid #ffffff',
+                        borderRadius: '50%',
+                        animation: 'spin 0.8s linear infinite',
+                      }} />
+                      Generating 8 Variations...
+                    </>
+                  ) : (
+                    <>✨ Generate 8 Variations</>
+                  )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          )}
+ 
+         {/* Evolution Grid Modal - REMOVED, now shows inline below celebrity matches */}
+ 
+         {/* Generated Result Modal */}
+         {generatedFromReference && (
+          <div
+            onClick={() => setGeneratedFromReference(null)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.95)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              backdropFilter: 'blur(10px)',
+              padding: '20px',
+            }}
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                maxWidth: '600px',
+                width: '100%',
+                backgroundColor: '#1a1a1a',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              }}
+            >
+              {/* Header */}
+              <div style={{
+                padding: '20px',
+                borderBottom: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}>
+                <h2 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  margin: 0,
+                  color: '#ffffff',
+                }}>
+                  🎉 Your New Look!
+                </h2>
+                <button
+                  onClick={() => {
+                    setGeneratedFromReference(null);
+                    setSelectedReference(null);
+                  }}
+                  style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: '#ffffff',
+                    fontSize: '20px',
+                    fontWeight: '300',
+                    transition: 'background 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Image */}
+              <div style={{
+                padding: '20px',
+              }}>
+                <img
+                  src={generatedFromReference}
+                  alt="Generated hairstyle"
+                  style={{
+                    width: '100%',
+                    borderRadius: '12px',
+                    display: 'block',
+                  }}
+                />
+              </div>
+
+              {/* Actions */}
+              <div style={{
+                padding: '20px',
+                borderTop: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex',
+                gap: '12px',
+              }}>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await downloadImage(e, generatedFromReference, `${selectedReference?.celebrityName}-hairstyle.png`);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '12px 24px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    backgroundColor: '#A47864',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#8B6854';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#A47864';
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Download
+                </button>
+                <button
+                  onClick={() => {
+                    setGeneratedFromReference(null);
+                    setSelectedReference(null);
+                  }}
+                  style={{
+                    padding: '12px 24px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    backgroundColor: 'transparent',
+                    color: '#a8a8a8',
+                    border: '2px solid rgba(255,255,255,0.2)',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)';
+                    e.currentTarget.style.color = '#ffffff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                    e.currentTarget.style.color = '#a8a8a8';
+                  }}
+                >
+                  Try Another
+                </button>
+              </div>
             </div>
           </div>
         )}

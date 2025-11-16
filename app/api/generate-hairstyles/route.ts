@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
         hairstyle.description,
         apiKey
       );
-      
+
       console.log(`Successfully generated hairstyle ${hairstyle.id}`);
       
       // Save to Supabase if configured and sessionId is provided
