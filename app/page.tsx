@@ -2444,7 +2444,7 @@ export default function Home() {
                       marginBottom: '8px',
                       textAlign: 'center',
                     }}>
-                      {selectedReference.celebrityName}'s Look
+                      {selectedReference!.celebrityName}'s Look
                     </div>
                     <div style={{
                       aspectRatio: '3/4',
@@ -2453,8 +2453,8 @@ export default function Home() {
                       border: '2px solid #A47864',
                     }}>
                       <img
-                        src={selectedReference.imageUrl}
-                        alt={selectedReference.imageTitle}
+                        src={selectedReference!.imageUrl}
+                        alt={selectedReference!.imageTitle}
                         style={{
                           width: '100%',
                           height: '100%',
